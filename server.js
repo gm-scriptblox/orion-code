@@ -5,7 +5,6 @@ const path    = require("path");
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Orion-Code system prompt ──────────────────────────────────────────
 const SYSTEM = `You are Orion-Code, an expert AI assistant specializing in Roblox scripting and Lua programming.
 
 Who you are:
@@ -28,13 +27,9 @@ How you respond:
 - If someone asks who you are, tell them you are Orion-Code, a Roblox scripting AI assistant.
 - Be friendly, direct, and helpful.`;
 
-// ── Middleware ────────────────────────────────────────────────────────
 app.use(express.json());
-
-// ── Static files (serves public/index.html at /) ─────────────────────
 app.use(express.static(path.join(__dirname, "public")));
 
-// ── Helper ───────────────────────────────────────────────────────────
 async function askAI(userMessage) {
   const url = "https://text.pollinations.ai/" + encodeURIComponent(userMessage)
     + "?model=openai"
@@ -46,7 +41,6 @@ async function askAI(userMessage) {
   return text.trim() || "No response received.";
 }
 
-// ── DEBUG: see raw pollinations response ──────────────────────────────
 app.get("/debug", async (req, res) => {
   const prompt = req.query.prompt || "hello";
   try {
@@ -68,9 +62,7 @@ app.get("/debug", async (req, res) => {
   }
 });
 
-// ── GET /api — browser docs page ──────────────────────────────────────
 app.get("/api", async (req, res) => {
-  // Allow ?prompt= as a convenience GET
   if (req.query.prompt && req.query.prompt.trim()) {
     try {
       const text = await askAI(req.query.prompt.trim());
@@ -142,7 +134,7 @@ app.get("/api", async (req, res) => {
       <span class="badge post">POST</span>
       <span class="url">${origin}/api</span>
     </div>
-    <div class="block-body">Send JSON body <strong>{ "prompt": "...", "model": "openai" }</strong> — returns <strong>raw plain text</strong>.</div>
+    <div class="block-body">Send JSON body <strong>{ "prompt": "..." }</strong> — returns <strong>raw plain text</strong>.</div>
   </div>
 
   <h2>cURL</h2>
@@ -150,7 +142,7 @@ app.get("/api", async (req, res) => {
 
 curl -X POST "${origin}/api" \\
   -H "Content-Type: application/json" \\
-  -d '{"prompt":"Write a Roblox kill script","model":"openai"}'</pre>
+  -d '{"prompt":"Write a Roblox kill script"}'</pre>
 
   <h2>JavaScript</h2>
 <pre>// GET
@@ -161,7 +153,7 @@ const text = await res.text();
 const res  = await fetch("${origin}/api", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ prompt: "Write a kill script", model: "openai" })
+  body: JSON.stringify({ prompt: "Write a kill script" })
 });
 const text = await res.text();</pre>
 
@@ -191,7 +183,6 @@ const text = await res.text();</pre>
 </html>`);
 });
 
-// ── POST /api — returns raw AI text ───────────────────────────────────
 app.post("/api", async (req, res) => {
   const prompt = req.body?.prompt;
 
@@ -207,12 +198,10 @@ app.post("/api", async (req, res) => {
   }
 });
 
-// ── 404 fallback ──────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).type("text/plain").send("404 — Not found");
 });
 
-// ── Start ─────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`Orion-Code running → http://localhost:${PORT}`);
 });
