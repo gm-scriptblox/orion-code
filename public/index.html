@@ -155,29 +155,7 @@
     gap: 10px;
   }
 
-  .model-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    font-size: 0.68rem;
-    color: var(--muted);
-  }
 
-  .model-pill select {
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--accent);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.68rem;
-    cursor: pointer;
-  }
-
-  .model-pill select option { background: var(--surface); color: var(--text); }
 
   .status-orb {
     display: flex;
@@ -571,17 +549,6 @@
       </div>
     </div>
     <div class="header-right">
-      <div class="model-pill">
-        MODEL:
-        <select id="model-select">
-          <option value="qwen-coder" selected>qwen-coder</option>
-          <option value="openai">openai</option>
-          <option value="mistral">mistral</option>
-          <option value="llama">llama</option>
-          <option value="gemini">gemini</option>
-          <option value="deepseek">deepseek</option>
-        </select>
-      </div>
       <div class="status-orb">
         <div class="orb-dot"></div>
         BEST IN CODING
@@ -792,7 +759,6 @@ How you respond:
     inputEl.value = '';
     inputEl.style.height = 'auto';
 
-    const model = document.getElementById('model-select').value;
     addMsg('user', text);
     history.push({ role: 'user', content: text });
     addTyping();
@@ -801,7 +767,7 @@ How you respond:
       const resp = await fetch('/api', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text, model })
+        body: JSON.stringify({ prompt: text })
       });
 
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
