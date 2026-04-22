@@ -31,7 +31,6 @@
     overflow: hidden;
   }
 
-  /* ── Animated background ── */
   body::before {
     content: '';
     position: fixed; inset: 0;
@@ -43,7 +42,6 @@
     z-index: 0;
   }
 
-  /* scanline overlay */
   body::after {
     content: '';
     position: fixed; inset: 0;
@@ -58,7 +56,6 @@
     z-index: 0;
   }
 
-  /* ── Grid ── */
   .grid-bg {
     position: fixed; inset: 0;
     background-image:
@@ -69,7 +66,6 @@
     z-index: 0;
   }
 
-  /* ── Layout ── */
   .app {
     position: relative; z-index: 1;
     display: flex; flex-direction: column;
@@ -78,7 +74,6 @@
     margin: 0 auto;
   }
 
-  /* ── Header ── */
   header {
     flex-shrink: 0;
     display: flex;
@@ -155,8 +150,6 @@
     gap: 10px;
   }
 
-
-
   .status-orb {
     display: flex;
     align-items: center;
@@ -196,7 +189,6 @@
   }
   .clear-btn:hover { border-color: var(--accent3); color: var(--accent3); }
 
-  /* ── Messages ── */
   #messages {
     flex: 1;
     overflow-y: auto;
@@ -213,7 +205,6 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 
-  /* Welcome screen */
   .welcome {
     display: flex;
     flex-direction: column;
@@ -314,7 +305,6 @@
 
   .cap span { position: relative; z-index: 1; }
 
-  /* Messages */
   .msg {
     display: flex;
     gap: 10px;
@@ -380,7 +370,6 @@
     color: var(--text);
   }
 
-  /* code blocks inside AI messages */
   .bubble code {
     background: rgba(0,0,0,0.4);
     border: 1px solid var(--border);
@@ -422,7 +411,6 @@
     flex-direction: column;
   }
 
-  /* Typing dots */
   .typing {
     display: flex;
     gap: 5px;
@@ -445,7 +433,6 @@
     30%          { transform: translateY(-7px); opacity: 1; }
   }
 
-  /* ── Input area ── */
   .input-area {
     flex-shrink: 0;
     padding: 12px 18px 16px;
@@ -601,38 +588,29 @@
 </div>
 
 <script>
-  // ── System prompt ────────────────────────────────────────────────
-  const SYSTEM = `You are Orion-Code, an expert AI assistant specializing in Roblox scripting and Lua programming.
-
-Who you are:
-- Your name is Orion-Code.
-- You were built to help Roblox developers of all skill levels — from beginners to advanced scripters.
-- You have deep knowledge of Roblox Studio, Lua 5.1, the Roblox API, game design patterns, and exploit scripting.
-
-What you can do:
-- Write complete, working Roblox LocalScripts, Scripts, and ModuleScripts on request.
-- Debug Lua code and explain what went wrong.
-- Explain Roblox concepts like RemoteEvents, BindableEvents, Datastores, Pathfinding, GUIs, physics, and more.
-- Help with math problems, algebra, geometry, and general calculations.
-- Answer general knowledge questions on any topic.
-- Give advice on game design, optimization, and best practices.
-
-How you respond:
-- Always be concise and clear.
-- When writing scripts, wrap them in a Lua code block using triple backticks.
-- Explain what your code does after writing it.
-- If someone asks who you are, tell them you are Orion-Code, a Roblox scripting AI assistant.
-- Be friendly, direct, and helpful.`;
-
-  // ── State ────────────────────────────────────────────────────────
-  const inputEl  = document.getElementById('user-input');
-  const sendBtn  = document.getElementById('send-btn');
-  const messages = document.getElementById('messages');
-  const welcome  = document.getElementById('welcome');
+  const inputEl = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+  const messagesEl = document.getElementById('messages');
+  const welcome = document.getElementById('welcome');
   let history = [];
-  let busy    = false;
+  let busy = false;
 
-  // ── Auto-resize textarea ─────────────────────────────────────────
+  function buildPrompt(newUserMsg) {
+    history.push({ role: 'user', content: newUserMsg });
+
+    if (history.length === 1) {
+      return history[0].content;
+    }
+
+    let prompt = `The following is a conversation history between "user" and "assistant". Each message is labeled. You MUST only respond to the LAST "user" message. Use all previous messages as context. Do NOT repeat old answers. Do NOT include "user:" or "assistant:" prefixes in your response. Just reply naturally.\n\n`;
+
+    for (const msg of history) {
+      prompt += `${msg.role}: ${msg.content}\n`;
+    }
+
+    return prompt;
+  }
+
   inputEl.addEventListener('input', () => {
     inputEl.style.height = 'auto';
     inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + 'px';
@@ -642,48 +620,39 @@ How you respond:
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
 
-  // ── Suggestion chips ─────────────────────────────────────────────
   function usePrompt(el) {
     inputEl.value = el.querySelector('span').textContent.replace(/^[^\s]+\s/, '');
     inputEl.dispatchEvent(new Event('input'));
     inputEl.focus();
   }
 
-  // ── Clear ────────────────────────────────────────────────────────
   function clearChat() {
     history = [];
-    messages.innerHTML = '';
-    messages.appendChild(welcome);
+    messagesEl.innerHTML = '';
+    messagesEl.appendChild(welcome);
     welcome.style.display = 'flex';
   }
 
-  // ── Format message (basic markdown-like) ─────────────────────────
   function formatText(raw) {
-    // Escape HTML first
     let t = raw
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
-    // Code blocks (```...```)
     t = t.replace(/```(?:\w+)?\n?([\s\S]*?)```/g, (_, code) =>
       `<pre>${code.trim()}</pre>`
     );
 
-    // Inline code
     t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-    // Line breaks
     t = t.replace(/\n/g, '<br>');
 
     return t;
   }
 
-  // ── Add message ──────────────────────────────────────────────────
   function addMsg(role, content) {
     if (welcome.parentNode) welcome.style.display = 'none';
 
-    const isUser  = role === 'user';
+    const isUser = role === 'user';
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${isUser ? 'user' : 'ai'}`;
 
@@ -706,12 +675,11 @@ How you respond:
     bwrap.appendChild(bubble);
     wrapper.appendChild(avatar);
     wrapper.appendChild(bwrap);
-    messages.appendChild(wrapper);
-    messages.scrollTop = messages.scrollHeight;
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
     return bubble;
   }
 
-  // ── Typing indicator ─────────────────────────────────────────────
   function addTyping() {
     if (welcome.parentNode) welcome.style.display = 'none';
     const wrapper = document.createElement('div');
@@ -741,8 +709,8 @@ How you respond:
     bwrap.appendChild(bubble);
     wrapper.appendChild(avatar);
     wrapper.appendChild(bwrap);
-    messages.appendChild(wrapper);
-    messages.scrollTop = messages.scrollHeight;
+    messagesEl.appendChild(wrapper);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
   function removeTyping() {
@@ -750,7 +718,6 @@ How you respond:
     if (el) el.remove();
   }
 
-  // ── Send ─────────────────────────────────────────────────────────
   async function sendMessage() {
     const text = inputEl.value.trim();
     if (!text || busy) return;
@@ -760,20 +727,28 @@ How you respond:
     inputEl.style.height = 'auto';
 
     addMsg('user', text);
-    history.push({ role: 'user', content: text });
+
+    const fullPrompt = buildPrompt(text);
+
     addTyping();
 
     try {
       const resp = await fetch('/api', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text })
+        body: JSON.stringify({ prompt: fullPrompt })
       });
 
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const reply = await resp.text();
+      let reply = await resp.text();
 
       removeTyping();
+
+      reply = reply.trim();
+      if (reply.toLowerCase().startsWith('assistant:')) {
+        reply = reply.substring('assistant:'.length).trim();
+      }
+
       history.push({ role: 'assistant', content: reply });
       addMsg('assistant', reply);
     } catch (err) {
@@ -788,4 +763,3 @@ How you respond:
 </script>
 </body>
 </html>
-
