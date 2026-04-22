@@ -629,8 +629,9 @@ How you respond:
   const sendBtn  = document.getElementById('send-btn');
   const messages = document.getElementById('messages');
   const welcome  = document.getElementById('welcome');
-  let history = [];
-  let busy    = false;
+  let history   = [];
+  let sessionId = null;
+  let busy      = false;
 
   // ── Auto-resize textarea ─────────────────────────────────────────
   inputEl.addEventListener('input', () => {
@@ -651,7 +652,9 @@ How you respond:
 
   // ── Clear ────────────────────────────────────────────────────────
   function clearChat() {
-    history = [];
+    history   = [];
+    sessionId = null;
+    window.history.replaceState(null, '', '/');
     messages.innerHTML = '';
     messages.appendChild(welcome);
     welcome.style.display = 'flex';
@@ -750,7 +753,6 @@ How you respond:
     if (el) el.remove();
   }
 
-  // ── Send ─────────────────────────────────────────────────────────
   async function sendMessage() {
     const text = inputEl.value.trim();
     if (!text || busy) return;
@@ -760,25 +762,28 @@ How you respond:
     inputEl.style.height = 'auto';
 
     addMsg('user', text);
-    history.push({ role: 'user', content: text });
     addTyping();
 
     try {
       const resp = await fetch('/api', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: text })
+        body: JSON.stringify({ prompt: text, sessionId })
       });
 
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const reply = await resp.text();
+      const data = await resp.json();
+      sessionId = data.sessionId;
+
+      if (!history.length) {
+        window.history.replaceState(null, '', '/' + sessionId);
+      }
 
       removeTyping();
-      history.push({ role: 'assistant', content: reply });
-      addMsg('assistant', reply);
+      addMsg('assistant', data.reply);
     } catch (err) {
       removeTyping();
-      addMsg('assistant', `⚠ Error: ${err.message}\n\nMake sure you have internet access and try again.`);
+      addMsg('assistant', `⚠ Error: ${err.message}`);
     } finally {
       busy = false;
       sendBtn.disabled = false;
