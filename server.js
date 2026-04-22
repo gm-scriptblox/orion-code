@@ -36,48 +36,49 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // ── Helper ───────────────────────────────────────────────────────────
 async function askAI(userMessage, model = "openai") {
-  const response = await fetch("https://text.pollinations.ai/openai", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      stream: false,
-      reasoning: false,
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user",   content: userMessage }
-      ]
-    })
-  });
+  // Use the simple GET endpoint — works anonymously, no key needed
+  const url = "https://text.pollinations.ai/" + encodeURIComponent(userMessage)
+    + "?model=" + model
+    + "&system=" + encodeURIComponent(SYSTEM);
 
-  const raw = await response.text();
+  const response = await fetch(url, { method: "GET" });
 
-  // Try parsing as JSON
-  let data;
-  try { data = JSON.parse(raw); } catch { return raw.trim() || "No response received."; }
+  if (!response.ok) {
+    throw new Error("Pollinations returned HTTP " + response.status);
+  }
 
-  // Check choices[0].message.content
-  const content = data?.choices?.[0]?.message?.content;
-  if (content && content.trim()) return content.trim();
-
-  // Some models return text directly in choices[0].text
-  const text = data?.choices?.[0]?.text;
-  if (text && text.trim()) return text.trim();
-
-  // Last resort: if top-level is a string
-  if (typeof data === "string" && data.trim()) return data.trim();
-
-  // Log what we got so you can debug
-  console.error("[askAI] Unexpected response shape:", JSON.stringify(data).slice(0, 500));
-  return "No response received.";
+  const text = await response.text();
+  return text.trim() || "No response received.";
 }
+
+// ── DEBUG: see raw pollinations response ──────────────────────────────
+app.get("/debug", async (req, res) => {
+  const prompt = req.query.prompt || "hello";
+  try {
+    const response = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "openai",
+        stream: false,
+        messages: [
+          { role: "user", content: prompt }
+        ]
+      })
+    });
+    const raw = await response.text();
+    res.type("text/plain").send("STATUS: " + response.status + "\n\nRAW:\n" + raw);
+  } catch (err) {
+    res.type("text/plain").send("FETCH ERROR: " + err.message);
+  }
+});
 
 // ── GET /api — browser docs page ──────────────────────────────────────
 app.get("/api", async (req, res) => {
   // Allow ?prompt= as a convenience GET
   if (req.query.prompt && req.query.prompt.trim()) {
     try {
-      const text = await askAI(req.query.prompt.trim(), req.query.model || "qwen-coder");
+      const text = await askAI(req.query.prompt.trim(), req.query.model || "openai");
       return res.type("text/plain").send(text);
     } catch (err) {
       return res.status(500).type("text/plain").send("Error: " + err.message);
@@ -198,7 +199,7 @@ const text = await res.text();</pre>
 // ── POST /api — returns raw AI text ───────────────────────────────────
 app.post("/api", async (req, res) => {
   const prompt = req.body?.prompt;
-  const model  = req.body?.model || "qwen-coder";
+  const model  = req.body?.model || "openai";
 
   if (!prompt || !prompt.trim()) {
     return res.status(400).type("text/plain").send("Error: prompt is required.");
