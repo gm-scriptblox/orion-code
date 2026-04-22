@@ -35,13 +35,14 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ── Helper ───────────────────────────────────────────────────────────
-async function askAI(userMessage, model = "qwen-coder") {
+async function askAI(userMessage, model = "openai") {
   const response = await fetch("https://text.pollinations.ai/openai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
       stream: false,
+      reasoning: false,
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user",   content: userMessage }
@@ -49,17 +50,25 @@ async function askAI(userMessage, model = "qwen-coder") {
     })
   });
 
-  const data = await response.json();
+  const raw = await response.text();
 
-  // Only pull message.content — ignore reasoning_content and other fields
-  const msg = data?.choices?.[0]?.message;
-  if (msg && typeof msg.content === "string" && msg.content.trim() !== "") {
-    return msg.content.trim();
-  }
+  // Try parsing as JSON
+  let data;
+  try { data = JSON.parse(raw); } catch { return raw.trim() || "No response received."; }
 
-  // Plain text fallback
-  if (typeof data === "string") return data;
+  // Check choices[0].message.content
+  const content = data?.choices?.[0]?.message?.content;
+  if (content && content.trim()) return content.trim();
 
+  // Some models return text directly in choices[0].text
+  const text = data?.choices?.[0]?.text;
+  if (text && text.trim()) return text.trim();
+
+  // Last resort: if top-level is a string
+  if (typeof data === "string" && data.trim()) return data.trim();
+
+  // Log what we got so you can debug
+  console.error("[askAI] Unexpected response shape:", JSON.stringify(data).slice(0, 500));
   return "No response received.";
 }
 
