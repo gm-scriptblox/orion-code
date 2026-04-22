@@ -35,7 +35,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ── Helper ───────────────────────────────────────────────────────────
-async function askAI(userMessage, model = "qwen-coder") {
+async function askAI(userMessage, model = "openai") {
   const response = await fetch("https://text.pollinations.ai/", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
