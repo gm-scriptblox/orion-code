@@ -166,7 +166,7 @@ const text = await res.text();</pre>
   <h2>About Orion-Code</h2>
   <div class="about">
     <p>
-      <strong>Orion-Code</strong> is a Roblox scripting AI assistant built on <strong>text.pollinations.ai</strong>. It stays in character on every request — always responding as Orion-Code.
+      <strong>Orion-Code</strong> is a Roblox scripting AI assistant built by <strong>VoidX</strong>. It stays in character on every request.
       <br><br>
       <span class="tag">Write Roblox scripts</span>
       <span class="tag">Debug Lua code</span>
