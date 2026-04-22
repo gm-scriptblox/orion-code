@@ -35,18 +35,13 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ── Helper ───────────────────────────────────────────────────────────
-async function askAI(userMessage, model = "openai") {
-  // Use the simple GET endpoint — works anonymously, no key needed
+async function askAI(userMessage) {
   const url = "https://text.pollinations.ai/" + encodeURIComponent(userMessage)
-    + "?model=" + model
+    + "?model=openai"
     + "&system=" + encodeURIComponent(SYSTEM);
 
   const response = await fetch(url, { method: "GET" });
-
-  if (!response.ok) {
-    throw new Error("Pollinations returned HTTP " + response.status);
-  }
-
+  if (!response.ok) throw new Error("HTTP " + response.status);
   const text = await response.text();
   return text.trim() || "No response received.";
 }
@@ -78,7 +73,7 @@ app.get("/api", async (req, res) => {
   // Allow ?prompt= as a convenience GET
   if (req.query.prompt && req.query.prompt.trim()) {
     try {
-      const text = await askAI(req.query.prompt.trim(), req.query.model || "openai");
+      const text = await askAI(req.query.prompt.trim());
       return res.type("text/plain").send(text);
     } catch (err) {
       return res.status(500).type("text/plain").send("Error: " + err.message);
@@ -139,7 +134,7 @@ app.get("/api", async (req, res) => {
       <span class="badge get">GET</span>
       <span class="url">${origin}/api?prompt=<span>{prompt}</span></span>
     </div>
-    <div class="block-body">Returns <strong>raw plain text</strong>. Pass your prompt as a query parameter. Optional: <strong>&amp;model=</strong> (openai / mistral / llama / gemini / deepseek)</div>
+    <div class="block-body">Returns <strong>raw plain text</strong>. Pass your prompt as a query parameter.</div>
   </div>
 
   <div class="block">
@@ -199,14 +194,13 @@ const text = await res.text();</pre>
 // ── POST /api — returns raw AI text ───────────────────────────────────
 app.post("/api", async (req, res) => {
   const prompt = req.body?.prompt;
-  const model  = req.body?.model || "openai";
 
   if (!prompt || !prompt.trim()) {
     return res.status(400).type("text/plain").send("Error: prompt is required.");
   }
 
   try {
-    const text = await askAI(prompt.trim(), model);
+    const text = await askAI(prompt.trim());
     res.type("text/plain").send(text);
   } catch (err) {
     res.status(500).type("text/plain").send("Error: " + err.message);
