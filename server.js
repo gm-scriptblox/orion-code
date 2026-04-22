@@ -72,7 +72,7 @@ app.get("/api", async (req, res) => {
     }
   }
 
-  const origin = `${req.protocol}://${req.get("host")}`;
+  const origin = `https://${req.get("host")}`;
 
   res.type("text/html").send(`<!DOCTYPE html>
 <html lang="en">
@@ -145,11 +145,9 @@ curl -X POST "${origin}/api" \\
   -d '{"prompt":"Write a Roblox kill script"}'</pre>
 
   <h2>JavaScript</h2>
-<pre>// GET
-const res  = await fetch("${origin}/api?prompt=Explain+RemoteEvents");
+<pre>const res  = await fetch("${origin}/api?prompt=Explain+RemoteEvents");
 const text = await res.text();
 
-// POST
 const res  = await fetch("${origin}/api", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
@@ -166,7 +164,7 @@ const text = await res.text();</pre>
   <h2>About Orion-Code</h2>
   <div class="about">
     <p>
-      <strong>Orion-Code</strong> is a Roblox scripting AI assistant built by <strong>VoidX</strong>. It stays in character on every request.
+      <strong>Orion-Code</strong> is a Roblox scripting AI assistant built on <strong>text.pollinations.ai</strong>. It stays in character on every request — always responding as Orion-Code.
       <br><br>
       <span class="tag">Write Roblox scripts</span>
       <span class="tag">Debug Lua code</span>
@@ -203,5 +201,5 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Orion-Code running → http://localhost:${PORT}`);
+  console.log(`Orion-Code running → https://localhost:${PORT}`);
 });
