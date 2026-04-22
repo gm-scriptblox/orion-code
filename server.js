@@ -35,19 +35,32 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ── Helper ───────────────────────────────────────────────────────────
-async function askAI(userMessage, model = "openai") {
-  const response = await fetch("https://text.pollinations.ai/", {
+async function askAI(userMessage, model = "qwen-coder") {
+  const response = await fetch("https://text.pollinations.ai/openai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
+      stream: false,
       messages: [
         { role: "system", content: SYSTEM },
         { role: "user",   content: userMessage }
       ]
     })
   });
-  return await response.text();
+
+  const data = await response.json();
+
+  // Only pull message.content — ignore reasoning_content and other fields
+  const msg = data?.choices?.[0]?.message;
+  if (msg && typeof msg.content === "string" && msg.content.trim() !== "") {
+    return msg.content.trim();
+  }
+
+  // Plain text fallback
+  if (typeof data === "string") return data;
+
+  return "No response received.";
 }
 
 // ── GET /api — browser docs page ──────────────────────────────────────
