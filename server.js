@@ -1,7 +1,6 @@
 const express = require("express");
 const fetch   = require("node-fetch");
 const path    = require("path");
-const crypto  = require("crypto");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -28,47 +27,13 @@ How you respond:
 - If someone asks who you are, tell them you are Orion-Code, a Roblox scripting AI assistant.
 - Be friendly, direct, and helpful.`;
 
-const EXPIRY = 20 * 60 * 1000;
-const sessions = new Map();
-
-function getSession(id) {
-  const s = sessions.get(id);
-  if (!s) return null;
-  if (Date.now() - s.lastActive > EXPIRY) {
-    sessions.delete(id);
-    return null;
-  }
-  s.lastActive = Date.now();
-  return s;
-}
-
-function createSession() {
-  const id = crypto.randomUUID();
-  sessions.set(id, { history: [], lastActive: Date.now() });
-  return id;
-}
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, s] of sessions) {
-    if (now - s.lastActive > EXPIRY) sessions.delete(id);
-  }
-}, 60 * 1000);
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-async function askAI(userMessage, history = []) {
-  const messages = [
-    { role: "system", content: SYSTEM },
-    ...history,
-    { role: "user", content: userMessage }
-  ];
-
+async function askAI(userMessage) {
   const url = "https://text.pollinations.ai/" + encodeURIComponent(userMessage)
     + "?model=openai"
-    + "&system=" + encodeURIComponent(SYSTEM)
-    + "&messages=" + encodeURIComponent(JSON.stringify(messages));
+    + "&system=" + encodeURIComponent(SYSTEM);
 
   const response = await fetch(url, { method: "GET" });
   if (!response.ok) throw new Error("HTTP " + response.status);
@@ -76,14 +41,31 @@ async function askAI(userMessage, history = []) {
   return text.trim() || "No response received.";
 }
 
+app.get("/debug", async (req, res) => {
+  const prompt = req.query.prompt || "hello";
+  try {
+    const response = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "openai",
+        stream: false,
+        messages: [
+          { role: "user", content: prompt }
+        ]
+      })
+    });
+    const raw = await response.text();
+    res.type("text/plain").send("STATUS: " + response.status + "\n\nRAW:\n" + raw);
+  } catch (err) {
+    res.type("text/plain").send("FETCH ERROR: " + err.message);
+  }
+});
+
 app.get("/api", async (req, res) => {
   if (req.query.prompt && req.query.prompt.trim()) {
     try {
-      let history = [];
-      if (req.query.history) {
-        try { history = JSON.parse(req.query.history); } catch {}
-      }
-      const text = await askAI(req.query.prompt.trim(), history);
+      const text = await askAI(req.query.prompt.trim());
       return res.type("text/plain").send(text);
     } catch (err) {
       return res.status(500).type("text/plain").send("Error: " + err.message);
@@ -133,9 +115,12 @@ app.get("/api", async (req, res) => {
 <body>
 <div class="wrap">
   <a class="back" href="${origin}">← Back to Orion-Code</a>
+
   <div class="logo">ORION-CODE</div>
   <div class="sub">API Reference</div>
+
   <h2>Endpoints</h2>
+
   <div class="block">
     <div class="block-head">
       <span class="badge get">GET</span>
@@ -143,50 +128,39 @@ app.get("/api", async (req, res) => {
     </div>
     <div class="block-body">Returns <strong>raw plain text</strong>. Pass your prompt as a query parameter.</div>
   </div>
+
   <div class="block">
     <div class="block-head">
       <span class="badge post">POST</span>
       <span class="url">${origin}/api</span>
     </div>
-    <div class="block-body">Send JSON body <strong>{ "prompt": "..." }</strong> — returns <strong>{ "reply": "...", "sessionId": "..." }</strong>. Pass <strong>sessionId</strong> back on the next request to keep chat history. Sessions expire after 20 minutes of inactivity.</div>
+    <div class="block-body">Send JSON body <strong>{ "prompt": "..." }</strong> — returns <strong>raw plain text</strong>.</div>
   </div>
+
   <h2>cURL</h2>
 <pre>curl "${origin}/api?prompt=Who+are+you"
 
 curl -X POST "${origin}/api" \\
   -H "Content-Type: application/json" \\
-  -d '{"prompt":"Write a Roblox kill script"}'
+  -d '{"prompt":"Write a Roblox kill script"}'</pre>
 
-curl -X POST "${origin}/api" \\
-  -H "Content-Type: application/json" \\
-  -d '{"prompt":"Make it shorter","sessionId":"your-session-id"}'</pre>
-  <h2>Python</h2>
-<pre>import requests
-
-session_id = None
-while True:
-    prompt = input("You: ")
-    res = requests.post("${origin}/api", json={"prompt": prompt, "sessionId": session_id})
-    data = res.json()
-    session_id = data["sessionId"]
-    print("Orion-Code:", data["reply"])</pre>
   <h2>JavaScript</h2>
-<pre>let sessionId = null;
-async function chat(prompt) {
-  const res = await fetch("${origin}/api", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, sessionId })
-  });
-  const data = await res.json();
-  sessionId = data.sessionId;
-  return data.reply;
-}</pre>
+<pre>const res  = await fetch("${origin}/api?prompt=Explain+RemoteEvents");
+const text = await res.text();
+
+const res  = await fetch("${origin}/api", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ prompt: "Write a kill script" })
+});
+const text = await res.text();</pre>
+
   <h2>Try It</h2>
   <a class="ex-link" href="${origin}/api?prompt=Who+are+you">${origin}/api?prompt=Who+are+you</a>
   <a class="ex-link" href="${origin}/api?prompt=Write+a+Roblox+kill+script">${origin}/api?prompt=Write+a+Roblox+kill+script</a>
   <a class="ex-link" href="${origin}/api?prompt=Explain+RemoteEvents">${origin}/api?prompt=Explain+RemoteEvents</a>
   <a class="ex-link" href="${origin}/api?prompt=What+is+2+%2B+2">${origin}/api?prompt=What+is+2+%2B+2</a>
+
   <h2>About Orion-Code</h2>
   <div class="about">
     <p>
@@ -208,40 +182,18 @@ async function chat(prompt) {
 });
 
 app.post("/api", async (req, res) => {
-  const prompt    = req.body?.prompt;
-  const sessionId = req.body?.sessionId;
+  const prompt = req.body?.prompt;
 
   if (!prompt || !prompt.trim()) {
-    return res.status(400).json({ error: "prompt is required." });
-  }
-
-  let session;
-  let id;
-
-  if (sessionId) {
-    session = getSession(sessionId);
-    id = sessionId;
-  }
-
-  if (!session) {
-    id = createSession();
-    session = getSession(id);
+    return res.status(400).type("text/plain").send("Error: prompt is required.");
   }
 
   try {
-    const reply = await askAI(prompt.trim(), session.history);
-    session.history.push({ role: "user",      content: prompt.trim() });
-    session.history.push({ role: "assistant", content: reply });
-    res.json({ reply, sessionId: id });
+    const text = await askAI(prompt.trim());
+    res.type("text/plain").send(text);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).type("text/plain").send("Error: " + err.message);
   }
-});
-
-app.get("/:sessionId", (req, res) => {
-  const session = getSession(req.params.sessionId);
-  if (!session) return res.status(404).type("text/plain").send("Session not found or expired.");
-  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 app.use((req, res) => {
